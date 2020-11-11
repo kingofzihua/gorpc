@@ -14,13 +14,13 @@ import (
 	"github.com/lubanproj/gorpc/plugin/jaeger"
 )
 
-// gorpc Server, a Server can have one or more Services
+//  gorpc Server 一个服务器可以有一个或多个服务
 type Server struct {
 	opts    *ServerOptions
 	service Service
 	plugins []plugin.Plugin
 
-	closing bool // whether the server is closing
+	closing bool // 服务器是否正在关闭
 }
 
 // NewServer creates a Server, Support to pass in ServerOption parameters

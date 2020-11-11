@@ -17,7 +17,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Service defines a generic implementation interface for a specific Service
+//  Service 定义了某个具体服务的通用实现接口
 type Service interface {
 	Register(string, Handler)
 	Serve(*ServerOptions)
@@ -25,15 +25,16 @@ type Service interface {
 	Name() string
 }
 
+//它是 Service 接口的具体实现
 type service struct {
 	svr         interface{}        // server
-	ctx         context.Context    // Each service is managed in one context
-	cancel      context.CancelFunc // controller of context
-	serviceName string             // service name
-	handlers    map[string]Handler
-	opts        *ServerOptions // parameter options
+	ctx         context.Context    // 每一个 service 一个上下文进行管理
+	cancel      context.CancelFunc // context 的控制器
+	serviceName string             // 服务名
+	handlers    map[string]Handler //每一类请求会分配一个 Handler 进行处理
+	opts        *ServerOptions     // 参数选项
 
-	closing bool // whether the service is closing
+	closing bool // 服务是否正在关闭
 }
 
 // ServiceDesc is a detailed description of a service
