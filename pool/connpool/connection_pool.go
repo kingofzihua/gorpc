@@ -9,14 +9,15 @@ import (
 	"time"
 )
 
-// Pool provides a pooling capability for connections, enabling connection reuse
+// Pool 为连接提供了一个池功能，支持连接重用  全局连接池对象是所有协程共用的。它主要是实现对所有子连接池的统一管理
 type Pool interface {
 	Get(ctx context.Context, network string, address string) (net.Conn, error)
 }
 
+// Pool 的实现
 type pool struct {
 	opts *Options
-	conns *sync.Map
+	conns *sync.Map  //key 是 server 的监听地址，value 是子连接池
 }
 
 var poolMap = make(map[string]Pool)
@@ -61,41 +62,48 @@ func NewConnPool(opt ...Option) *pool {
 	return p
 }
 
+// 获取连接 net.Conn
 func (p *pool) Get(ctx context.Context, network string, address string) (net.Conn, error) {
 
+	//从 map 中取出 key 为 address 的子连接池
 	if value, ok := p.conns.Load(address); ok {
+
+		// 断言 value 是 *channelPool 类型
 		if cp, ok := value.(*channelPool); ok {
-			conn, err := cp.Get(ctx)
+			conn, err := cp.Get(ctx) // 从连接池中获取连接
 			return conn, err
 		}
 	}
 
+	//假如不存在，那么说明是第一次调用，创建 后端 server 地址为 address 的子连接池
 	cp, err := p.NewChannelPool(ctx, network, address)
 	if err != nil {
 		return nil, err
 	}
 
+	// 存储
 	p.conns.Store(address, cp)
 
 	return cp.Get(ctx)
 }
 
+// 子连接池
 type channelPool struct {
 	net.Conn
-	initialCap int  // initial capacity
-	maxCap int      // max capacity
-	maxIdle int     // max idle conn number
-	idleTimeout time.Duration  // idle timeout
-	dialTimeout time.Duration  // dial timeout
+	initialCap int  // 初始容量
+	maxCap int      // 最大容量
+	maxIdle int     // 最大空闲连接数
+	idleTimeout time.Duration  // 空闲超时时间
+	dialTimeout time.Duration  // 发送超时时间
 	Dial func(context.Context) (net.Conn, error)
 	conns chan *PoolConn
 	mu sync.RWMutex
 }
 
-
+// 初始化子连接池
 func (p *pool) NewChannelPool(ctx context.Context, network string, address string) (*channelPool, error){
 	c := &channelPool {
-		initialCap: p.opts.initialCap,
+		initialCap: p.opts.initialCap, //指定初始化连接池的容量
 		maxCap: p.opts.maxCap,
 		Dial : func(ctx context.Context) (net.Conn, error) {
 			select {
@@ -111,7 +119,7 @@ func (p *pool) NewChannelPool(ctx context.Context, network string, address strin
 
 			return net.DialTimeout(network, address, timeout)
 		},
-		conns : make(chan *PoolConn, p.opts.maxCap),
+		conns : make(chan *PoolConn, p.opts.maxCap), //指定连接池最大容量
 		idleTimeout: p.opts.idleTimeout,
 		dialTimeout: p.opts.dialTimeout,
 	}
@@ -121,6 +129,7 @@ func (p *pool) NewChannelPool(ctx context.Context, network string, address strin
 		p.opts.initialCap = 1
 	}
 
+	// 连接池填充(根据 initialCap )数量填充
 	for i := 0; i < p.opts.initialCap; i++ {
 		conn , err := c.Dial(ctx);
 		if err != nil {
@@ -129,6 +138,7 @@ func (p *pool) NewChannelPool(ctx context.Context, network string, address strin
 		c.Put(c.wrapConn(conn))
 	}
 
+	//注册 连接检查 (每3秒进行一次)
 	c.RegisterChecker(3 * time.Second, c.Checker)
 	return c, nil
 }
@@ -230,6 +240,7 @@ func (c *channelPool) RegisterChecker(internal time.Duration, checker func(conn 
 	}()
 }
 
+// 健康检查函数
 func (c *channelPool) Checker (pc *PoolConn) bool {
 
 	// check timeout
@@ -245,9 +256,11 @@ func (c *channelPool) Checker (pc *PoolConn) bool {
 	return true
 }
 
+// 检查连接是否存活
 func isConnAlive(conn net.Conn) bool {
 	conn.SetReadDeadline(time.Now().Add(time.Millisecond))
 
+	//读取1个byte 如果 返回的数量 0 或者 是EOF 就返回失败
 	if n, err := conn.Read(oneByte); n > 0 || err == io.EOF {
 		return false
 	}
