@@ -1,8 +1,8 @@
 package selector
 
-// Node defines the basic information for a service Node
+// 服务节点的基本信息
 type Node struct {
-	Key string
-	Value []byte
-	weight int
+	Key    string
+	Value  []byte
+	weight int //权重
 }

@@ -52,8 +52,10 @@ func (c *Consul) InitConfig() error {
 	return nil
 }
 
+// 通过一个服务名去获取服务列表
 func (c *Consul) Resolve(serviceName string) ([]*selector.Node, error) {
 
+	// 从 consul k-v 存储中获取服务列表
 	pairs, _, err := c.client.KV().List(serviceName, nil)
 	if err != nil {
 		return nil, err
@@ -72,15 +74,17 @@ func (c *Consul) Resolve(serviceName string) ([]*selector.Node, error) {
 	return nodes, nil
 }
 
-// implements selector Select method
+// implements selector Select method 服务发现的过程
 func (c *Consul) Select(serviceName string) (string, error) {
 
+	// 通过服务名获取可用节点
 	nodes, err := c.Resolve(serviceName)
 
 	if nodes == nil || len(nodes) == 0 || err != nil {
 		return "", err
 	}
 
+	//负载均衡实现
 	balancer := selector.GetBalancer(c.balancerName)
 	node := balancer.Balance(serviceName, nodes)
 
@@ -103,6 +107,7 @@ func parseAddrFromNode(node *selector.Node) (string, error) {
 
 func (c *Consul) Init(opts ...plugin.Option) error {
 
+	//设置 Consul 参数
 	for _, o := range opts {
 		o(c.opts)
 	}
@@ -116,6 +121,7 @@ func (c *Consul) Init(opts ...plugin.Option) error {
 		return err
 	}
 
+	// 服务注册
 	for _, serviceName := range c.opts.Services {
 		nodeName := fmt.Sprintf("%s/%s", serviceName, c.opts.SvrAddr)
 

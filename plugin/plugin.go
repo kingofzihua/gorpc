@@ -7,12 +7,12 @@ type Plugin interface {
 
 }
 
-// ResolverPlugin defines the standard for all server discovery plug-ins
+// ResolverPlugin 定义了所有服务器发现插件的标准
 type ResolverPlugin interface {
 	Init(...Option) error
 }
 
-// TracingPlugin defines the standard for all tracing plug-ins
+// TracingPlugin 定义了链路追踪的标准
 type TracingPlugin interface {
 	Init(...Option) (opentracing.Tracer, error)
 }

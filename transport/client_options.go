@@ -13,7 +13,7 @@ type ClientTransportOptions struct {
 	ServiceName string
 	Network     string
 	Pool        connpool.Pool
-	Selector    selector.Selector
+	Selector    selector.Selector  //服务发现
 	Timeout     time.Duration
 }
 
