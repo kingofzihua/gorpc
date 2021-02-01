@@ -13,10 +13,10 @@ type Balancer interface {
 var balancerMap = make(map[string]Balancer, 0)
 
 const (
-	Random = "random"
-	RoundRobin = "roundRobin"
-	WeightedRoundRobin = "weightedRoundRobin"
-	ConsistentHash = "consistentHash"
+	Random             = "random"             //随机算法
+	RoundRobin         = "roundRobin"         //轮询算法
+	WeightedRoundRobin = "weightedRoundRobin" //加权轮询算法
+	ConsistentHash     = "consistentHash"     //一致性哈希
 
 	Custom = "custom"
 )
@@ -29,8 +29,10 @@ func init() {
 
 // RandomBalancer is adopted as the default load balancer
 var DefaultBalancer = newRandomBalancer()
+
 // A unique RoundRobinBalancer instance is used globally
 var RRBalancer = newRoundRobinBalancer()
+
 // A unique WeightedRoundRobinBalancer instance is used globally
 var WRRBalancer = newWeightedRoundRobinBalancer()
 
@@ -55,7 +57,6 @@ func newRandomBalancer() *randomBalancer {
 }
 
 type randomBalancer struct {
-
 }
 
 func (r *randomBalancer) Balance(serviceName string, nodes []*Node) *Node {
@@ -66,6 +67,3 @@ func (r *randomBalancer) Balance(serviceName string, nodes []*Node) *Node {
 	num := rand.Intn(len(nodes))
 	return nodes[num]
 }
-
-
-
