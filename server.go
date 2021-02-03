@@ -231,12 +231,15 @@ func (s *Server) Close() {
 	s.service.Close()
 }
 
+// 初始化插件
 func (s *Server) InitPlugins() error {
 	// init plugins
 	for _, p := range s.plugins {
 
+		// 获取插件的类型
 		switch val := p.(type) {
 
+		// 如果是服务发现插件
 		case plugin.ResolverPlugin:
 			var services []string
 			services = append(services, s.service.Name())
@@ -250,19 +253,21 @@ func (s *Server) InitPlugins() error {
 				log.Errorf("resolver init error, %v", err)
 				return err
 			}
-
+		//	如果是链路追踪插件
 		case plugin.TracingPlugin:
 
 			pluginOpts := []plugin.Option{
 				plugin.WithTracingSvrAddr(s.opts.tracingSvrAddr),
 			}
 
+			// 初始化插件
 			tracer, err := val.Init(pluginOpts...)
 			if err != nil {
 				log.Errorf("tracing init error, %v", err)
 				return err
 			}
 
+			// server 的拦截器自动添加 链路追踪的拦截器
 			s.opts.interceptors = append(s.opts.interceptors, jaeger.OpenTracingServerInterceptor(tracer, s.opts.tracingSpanName))
 
 		default:

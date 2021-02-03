@@ -19,7 +19,7 @@ type Jaeger struct {
 	opts *plugin.Options
 }
 
-const Name = "jaeger"
+const Name = "jaeger" //定义插件名称
 const JaegerClientName = "gorpc-client-jaeger"
 const JaegerServerName = "gorpc-server-jaeger"
 
@@ -28,8 +28,8 @@ func init() {
 }
 
 // global jaeger objects for framework
-var JaegerSvr = &Jaeger {
-	opts : &plugin.Options{},
+var JaegerSvr = &Jaeger{
+	opts: &plugin.Options{},
 }
 
 type jaegerCarrier map[string][]byte
@@ -46,10 +46,10 @@ func (m jaegerCarrier) ForeachKey(handler func(key, val string) error) error {
 	return nil
 }
 
-// OpenTracingClientInterceptor packaging jaeger tracer as a client interceptor
+// OpenTracingClientInterceptor client 端的拦截器
 func OpenTracingClientInterceptor(tracer opentracing.Tracer, spanName string) interceptor.ClientInterceptor {
 
-	return func (ctx context.Context, req, rsp interface{}, ivk interceptor.Invoker) error {
+	return func(ctx context.Context, req, rsp interface{}, ivk interceptor.Invoker) error {
 
 		//var parentCtx opentracing.SpanContext
 		//
@@ -74,7 +74,7 @@ func OpenTracingClientInterceptor(tracer opentracing.Tracer, spanName string) in
 	}
 }
 
-// OpenTracingServerInterceptor packaging jaeger tracer as a server interceptor
+// OpenTracingServerInterceptor 服务端的拦截器
 func OpenTracingServerInterceptor(tracer opentracing.Tracer, spanName string) interceptor.ServerInterceptor {
 
 	return func(ctx context.Context, req interface{}, handler interceptor.Handler) (interface{}, error) {
@@ -85,7 +85,7 @@ func OpenTracingServerInterceptor(tracer opentracing.Tracer, spanName string) in
 		if err != nil && err != opentracing.ErrSpanContextNotFound {
 			return nil, errors.New(fmt.Sprintf("tracer extract error : %v", err))
 		}
-		serverSpan := tracer.StartSpan(spanName, ext.RPCServerOption(spanContext),ext.SpanKindRPCServer)
+		serverSpan := tracer.StartSpan(spanName, ext.RPCServerOption(spanContext), ext.SpanKindRPCServer)
 		defer serverSpan.Finish()
 
 		ctx = opentracing.ContextWithSpan(ctx, serverSpan)
@@ -97,13 +97,15 @@ func OpenTracingServerInterceptor(tracer opentracing.Tracer, spanName string) in
 
 }
 
-// Init implements the initialization of the jaeger configuration when the framework is loaded
-func Init(tracingSvrAddr string, opts ... plugin.Option) (opentracing.Tracer, error) {
-	return initJaeger(tracingSvrAddr, JaegerClientName, opts ...)
+// Init 在加载框架时实现 jaeger 配置的初始化 ( client 的初始化)
+func Init(tracingSvrAddr string, opts ...plugin.Option) (opentracing.Tracer, error) {
+	return initJaeger(tracingSvrAddr, JaegerClientName, opts...)
 }
 
+// server 的初始化
 func (j *Jaeger) Init(opts ...plugin.Option) (opentracing.Tracer, error) {
 
+	// config 设置
 	for _, o := range opts {
 		o(j.opts)
 	}
@@ -112,28 +114,32 @@ func (j *Jaeger) Init(opts ...plugin.Option) (opentracing.Tracer, error) {
 		return nil, errors.New("jaeger init error, traingSvrAddr is empty")
 	}
 
-	return initJaeger(j.opts.TracingSvrAddr, JaegerServerName, opts ...)
-
+	return initJaeger(j.opts.TracingSvrAddr, JaegerServerName, opts...)
 }
 
-func initJaeger(tracingSvrAddr string, jaegerServiceName string, opts ... plugin.Option) (opentracing.Tracer, error) {
+// 初始化 Jaeger
+func initJaeger(tracingSvrAddr string, jaegerServiceName string, opts ...plugin.Option) (opentracing.Tracer, error) {
+	// 初始化 jaeger 的配置
 	cfg := &config.Configuration{
-		Sampler : &config.SamplerConfig{
-			Type : "const",  // Fixed sampling
-			Param : 1,       // 1= full sampling, 0= no sampling
+		// 采样设置
+		Sampler: &config.SamplerConfig{
+			Type:  "const", // 固定采样
+			Param: 1,       // 1= 全采样, 0= 不全采样
 		},
-		Reporter : &config.ReporterConfig{
-			LogSpans: true,
+		Reporter: &config.ReporterConfig{
+			LogSpans:           true,
 			LocalAgentHostPort: tracingSvrAddr,
 		},
-		ServiceName : jaegerServiceName,
+		ServiceName: jaegerServiceName,
 	}
 
+	// 通过配置来创建一个 tracer 实例
 	tracer, _, err := cfg.NewTracer()
 	if err != nil {
 		return nil, err
 	}
 
+	//将 tracer 实例作为 opentracing 规范的实现
 	opentracing.SetGlobalTracer(tracer)
 
 	return tracer, err

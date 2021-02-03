@@ -7,12 +7,14 @@ type Plugin interface {
 
 }
 
-// ResolverPlugin 定义了所有服务器发现插件的标准
+// ResolverPlugin 定义了所有服务发现插件的标准
 type ResolverPlugin interface {
 	Init(...Option) error
 }
 
 // TracingPlugin 定义了链路追踪的标准
+// tracing 类插件的初始化过程比较特殊，需要返回一个 Tracer，
+//所以这里单独定义一类 TracingPlugin 用来实现 tracing 插件的初始化
 type TracingPlugin interface {
 	Init(...Option) (opentracing.Tracer, error)
 }
