@@ -16,7 +16,7 @@ type TransportAuth interface {
 
 }
 
-// PerRPCAuth defines a common interface for single RPC call authentication
+// PerRPCAuth 为单个RPC调用身份验证定义了一个公共接口
 type PerRPCAuth interface {
 
 	// GetMetadata fetch custom metadata from the context

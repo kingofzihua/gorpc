@@ -16,7 +16,9 @@ import (
 
 func main() {
 
+	// AuthFunc 验证令牌是否有效
 	af := func(ctx context.Context) (context.Context, error){
+		//取出 metadata
 		md := metadata.ServerMetadata(ctx)
 
 		if len(md) == 0 {

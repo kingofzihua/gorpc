@@ -55,9 +55,10 @@ func NewServerTLSAuthFromFile(certFile, keyFile string) (TransportAuth, error) {
 	return &tlsAuth{config : conf}, nil
 }
 
-// ClientHandshake implements the client's handshake
+// ClientHandshake 实现客户端的握手
 func (t *tlsAuth) ClientHandshake(ctx context.Context, authority string, rawConn net.Conn) (net.Conn, AuthInfo, error) {
-	// Prevent ServerName from being contaminated when you use a different endpoint
+	// 先从 tls 的配置信息 Config 中获取认证信息
+	// 防止使用不同的 endpoints 时 ServerName 被污染
 	cfg := cloneTLSConfig(t.config)
 	if cfg.ServerName == "" {
 		colonPos := strings.LastIndex(authority, ":")
@@ -86,7 +87,9 @@ func (t *tlsAuth) ClientHandshake(ctx context.Context, authority string, rawConn
 
 // the ServerHandshake implements the server handshake
 func (t *tlsAuth) ServerHandshake(rawConn net.Conn) (net.Conn, AuthInfo, error) {
+	// 先从 tls 的配置信息 Config 中获取认证信息，然后调用 tls.Server 方法获取一个带有认证信息的连接 conn
 	conn := tls.Server(rawConn, t.config)
+	// 使用这个新的 conn 进行握手
 	if err := conn.Handshake(); err != nil {
 		return nil, nil, err
 	}

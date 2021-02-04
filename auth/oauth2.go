@@ -33,22 +33,21 @@ func NewOAuth2(t *oauth2.Token) *oAuth2 {
 	}
 }
 
+//实现 GetMetadata 方法来进行 Token
 func (o *oAuth2) GetMetadata(ctx context.Context, uri ... string) (map[string]string, error) {
 
 	if o.token == nil {
 		return nil, codes.ClientCertFailError
 	}
 
-	return map[string]string{
-		"authorization": o.token.Type() + " " + o.token.AccessToken,
-	}, nil
+	return map[string]string{"authorization": o.token.Type() + " " + o.token.AccessToken,}, nil
 }
 
-// AuthFunc verifies that the token is valid or not
+// AuthFunc 验证令牌是否有效
 type AuthFunc func(ctx context.Context) (context.Context, error)
 
 
-// BuildAuthFilter constructs a client interceptor with an AuthFunc
+// 验证客户端令牌的拦截器
 func BuildAuthInterceptor(af AuthFunc) interceptor.ServerInterceptor {
 
 	return func(ctx context.Context, req interface{}, handler interceptor.Handler) (interface{}, error) {
