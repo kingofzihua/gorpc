@@ -32,6 +32,7 @@ var JaegerSvr = &Jaeger{
 	opts: &plugin.Options{},
 }
 
+// jaegerCarrier 是一种 map[string] []byte 结构，用来作为传输一些 key-value 数据的载体
 type jaegerCarrier map[string][]byte
 
 func (m jaegerCarrier) Set(key, val string) {
@@ -53,16 +54,19 @@ func OpenTracingClientInterceptor(tracer opentracing.Tracer, spanName string) in
 
 		//var parentCtx opentracing.SpanContext
 		//
+		////先通过 opentracing.SpanFromContext 获取上游带下来的 span 上下文信息
 		//if parent := opentracing.SpanFromContext(ctx); parent != nil {
 		//	parentCtx = parent.Context()
 		//}
 
+		//调用 tracer.StartSpan 创建一个 client span
 		//clientSpan := tracer.StartSpan(spanName, ext.SpanKindRPCClient, opentracing.ChildOf(parentCtx))
 		clientSpan := tracer.StartSpan(spanName, ext.SpanKindRPCClient)
 		defer clientSpan.Finish()
 
 		mdCarrier := &jaegerCarrier{}
 
+		//通过调用 tracer.Inject，将所需要透传给下游的一些信息塞到 Span 里面
 		if err := tracer.Inject(clientSpan.Context(), opentracing.HTTPHeaders, mdCarrier); err != nil {
 			clientSpan.LogFields(log.String("event", "Tracer.Inject() failed"), log.Error(err))
 		}
@@ -81,13 +85,16 @@ func OpenTracingServerInterceptor(tracer opentracing.Tracer, spanName string) in
 
 		mdCarrier := &jaegerCarrier{}
 
+		//调用 tracer.Extract 解析 Span 的上下文信息，获得一个 SpanContext
 		spanContext, err := tracer.Extract(opentracing.HTTPHeaders, mdCarrier)
 		if err != nil && err != opentracing.ErrSpanContextNotFound {
 			return nil, errors.New(fmt.Sprintf("tracer extract error : %v", err))
 		}
+		//调用 tracer.StartSpan 进行创建一个 server span
 		serverSpan := tracer.StartSpan(spanName, ext.RPCServerOption(spanContext), ext.SpanKindRPCServer)
 		defer serverSpan.Finish()
 
+		//把 server span 放到上下文 context 中进行透传
 		ctx = opentracing.ContextWithSpan(ctx, serverSpan)
 
 		serverSpan.LogFields(log.String("spanName", spanName))
