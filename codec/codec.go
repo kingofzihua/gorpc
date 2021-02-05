@@ -15,20 +15,20 @@ type Codec interface {
 	Decode([]byte) ([]byte, error)
 }
 
-const FrameHeadLen = 15
-const Magic = 0x11
-const Version = 0
+const FrameHeadLen = 15 //定义数据帧头大小
+const Magic = 0x11      //定义魔数
+const Version = 0       //当前版本
 
-// FrameHeader describes the header structure of a data frame
+// 数据帧头
 type FrameHeader struct {
-	Magic uint8    // magic
-	Version uint8  // version
-	MsgType uint8  // msg type e.g. :   0x0: general req,  0x1: heartbeat
-	ReqType uint8  // request type e.g. :   0x0: send and receive,   0x1: send but not receive,  0x2: client stream request, 0x3: server stream request, 0x4: bidirectional streaming request
-	CompressType uint8 // compression or not :  0x0: not compression,  0x1: compression
-	StreamID uint16    // stream ID
-	Length uint32  	// total packet length
-	Reserved uint32  // 4 bytes reserved
+	Magic        uint8  // 魔数  => 硬写到代码里的整数常量
+	Version      uint8  // 版本号 用来支持版本迭代
+	MsgType      uint8  // 消息类型 e.g. :   0x0: 普通消息 ,  0x1: 心跳消息
+	ReqType      uint8  // 请求类型 e.g. :   0x0: 一发一收,   0x1: 只发不收,  0x2: 客户端流式请求, 0x3: 服务端流式请求, 0x4: 双向流式请求
+	CompressType uint8  // 是否压缩 :  0x0: 不压缩,  0x1: 压缩
+	StreamID     uint16 // 流 id 为了支持后续流式传输的能力
+	Length       uint32 // 消息的长度
+	Reserved     uint32 // 4个字节的保留位
 }
 
 // GetCodec get a Codec by a codec name
@@ -45,7 +45,7 @@ var codecMap = make(map[string]Codec)
 var DefaultCodec = NewCodec()
 
 // NewCodec returns a globally unique codec
-var NewCodec = 	func () Codec {
+var NewCodec = func() Codec {
 	return &defaultCodec{}
 }
 
@@ -61,52 +61,51 @@ func RegisterCodec(name string, codec Codec) {
 	codecMap[name] = codec
 }
 
+// 编码 => 将一个经过序列化的 request/response 二进制数据，拼接帧头形成一个完整的数据帧
 func (c *defaultCodec) Encode(data []byte) ([]byte, error) {
 
 	totalLen := FrameHeadLen + len(data)
 	buffer := bytes.NewBuffer(make([]byte, 0, totalLen))
 
+	//封装帧头
 	frame := FrameHeader{
-		Magic : Magic,
-		Version : Version,
-		MsgType : 0x0,
-		ReqType : 0x0,
-		CompressType: 0x0,
-		Length: uint32(len(data)),
+		Magic:        Magic,
+		Version:      Version,
+		MsgType:      0x0,
+		ReqType:      0x0,
+		CompressType: 0x0, // 默认不压缩
+		Length:       uint32(len(data)),
 	}
 
+	// binary.BigEndian 大端序 => 网络传输一般是大端序
+
+	// 拼装帧头
 	if err := binary.Write(buffer, binary.BigEndian, frame.Magic); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.Version); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.MsgType); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.ReqType); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.CompressType); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.StreamID); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.Length); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Write(buffer, binary.BigEndian, frame.Reserved); err != nil {
 		return nil, err
 	}
 
+	// 拼装包数据成为一个完整的数据帧
 	if err := binary.Write(buffer, binary.BigEndian, data); err != nil {
 		return nil, err
 	}
@@ -114,8 +113,9 @@ func (c *defaultCodec) Encode(data []byte) ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-
-func (c *defaultCodec) Decode(frame []byte) ([]byte,error) {
+// 解码
+func (c *defaultCodec) Decode(frame []byte) ([]byte, error) {
+	//去掉帧头，就是包头+包体
 	return frame[FrameHeadLen:], nil
 }
 
@@ -129,10 +129,10 @@ func upperLimit(val int) uint32 {
 }
 
 var bufferPool = &sync.Pool{
-	New : func() interface {} {
-		return &cachedBuffer {
-			Buffer : proto.Buffer{},
-			lastMarshaledSize : 16,
+	New: func() interface{} {
+		return &cachedBuffer{
+			Buffer:            proto.Buffer{},
+			lastMarshaledSize: 16,
 		}
 	},
 }
