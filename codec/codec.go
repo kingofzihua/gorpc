@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
-// Codec defines the codec specification for data
+// Codec 定义了编解码的通用标准
 type Codec interface {
 	Encode([]byte) ([]byte, error)
 	Decode([]byte) ([]byte, error)
